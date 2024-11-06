@@ -86,6 +86,11 @@ export default {
 		version: {
 			type: String,
 			default: ''
+		},
+		// List the dates that should be displayed, as comma-separated ISO strings
+		dateFilter: {
+			type: String,
+			default: ''
 		}
 	},
 	provide () {
@@ -113,6 +118,7 @@ export default {
 			apiUrl: null,
 			translationMessages: {},
 			errorMessages: [],
+			displayDates: this.dateFilter?.split(',').filter(d => d.length === 10) || [],
 		}
 	},
 	computed: {
@@ -143,12 +149,14 @@ export default {
 			for (const session of this.schedule.talks.filter(s => s.start)) {
 				if (this.onlyFavs && !this.favs.includes(session.code)) continue
 				if (this.filteredTracks && this.filteredTracks.length && !this.filteredTracks.find(t => t.id === session.track)) continue
+				const start = DateTime.fromISO(session.start)
+				if (this.displayDates.length && !this.displayDates.includes(start.setZone(this.schedule.timezone).toISODate())) continue
 				sessions.push({
 					id: session.code,
 					title: session.title,
 					abstract: session.abstract,
 					do_not_record: session.do_not_record,
-					start: DateTime.fromISO(session.start),
+					start: start,
 					end: DateTime.fromISO(session.end),
 					speakers: session.speakers?.map(s => this.speakersLookup[s]),
 					track: this.tracksLookup[session.track],
