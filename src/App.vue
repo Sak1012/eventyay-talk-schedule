@@ -31,9 +31,10 @@
 				div.timezone-label.timezone-item.bunt-tab-header-item {{ schedule.timezone }}
 		bunt-tabs.days(v-if="days && days.length > 1", v-model="currentDay", ref="tabs" :class="showGrid? ['grid-tabs'] : ['list-tabs']")
 			bunt-tab(v-for="day in days", :id="day.toISODate()", :header="day.toLocaleString(dateFormat)", @selected="changeDay(day)")
-		grid-schedule(v-if="showGrid",
+		grid-schedule-wrapper(v-if="showGrid",
 			:sessions="sessions",
 			:rooms="rooms",
+			:days="days",
 			:currentDay="currentDay",
 			:now="now",
 			:hasAmPm="hasAmPm",
@@ -70,12 +71,12 @@
 import { computed } from 'vue'
 import { DateTime, Settings } from 'luxon'
 import LinearSchedule from '~/components/LinearSchedule'
-import GridSchedule from '~/components/GridSchedule'
+import GridScheduleWrapper from '~/components/GridScheduleWrapper'
 import { findScrollParent, getLocalizedString } from '~/utils'
 
 export default {
 	name: 'PretalxSchedule',
-	components: { LinearSchedule, GridSchedule },
+	components: { LinearSchedule, GridScheduleWrapper },
 	props: {
 		eventUrl: String,
 		locale: String,
