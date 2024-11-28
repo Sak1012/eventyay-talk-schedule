@@ -28,11 +28,11 @@ export function getPrettyDuration (start, end) {
 }
 
 export function timeWithoutAmPm (time, locale) {
-	const parts = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric' }).formatToParts(time)
+	const parts = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric', timeZone: time.zoneName }).formatToParts(time)
 	return parts.filter(part => part.type !== 'dayPeriod').map(part => part.value).join('')
 }
 
 export function timeAmPm (time, locale) {
-	const parts = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric' }).formatToParts(time)
+	const parts = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric', timeZone: time.zoneName }).formatToParts(time)
 	return parts.filter(part => part.type === 'dayPeriod')[0].value
 }
