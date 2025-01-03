@@ -22,6 +22,7 @@
 				:showAbstract="false", :showRoom="false",
 				:faved="favs.includes(session.id)",
 				:hasAmPm="hasAmPm",
+				:onHomeServer="onHomeServer",
 				@fav="$emit('fav', session.id)",
 				@unfav="$emit('unfav', session.id)"
 			)
@@ -65,7 +66,8 @@ export default {
 		timezone: String,
 		locale: String,
 		hasAmPm: Boolean,
-		scrollParent: Element
+		scrollParent: Element,
+		onHomeServer: Boolean
 	},
 	data () {
 		return {

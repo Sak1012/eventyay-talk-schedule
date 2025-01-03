@@ -13,6 +13,7 @@
 					:locale="locale",
 					:hasAmPm="hasAmPm",
 					:faved="session.id && favs.includes(session.id)",
+					:onHomeServer="onHomeServer",
 					@fav="$emit('fav', session.id)",
 					@unfav="$emit('unfav', session.id)"
 				)
@@ -41,6 +42,7 @@ export default {
 		currentDay: String,
 		now: Object,
 		scrollParent: Element,
+		onHomeServer: Boolean
 	},
 	data () {
 		return {

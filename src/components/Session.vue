@@ -62,11 +62,14 @@ export default {
 			default: false
 		},
 		locale: String,
-		timezone: String
+		timezone: String,
+		onHomeServer: Boolean
 	},
 	inject: {
 		eventUrl: { default: null },
-		linkTarget: { default: '_self' },
+		linkTarget: { default () {
+			return this.onHomeServer ? '_self' : '_blank'
+		} },
 		generateSessionLinkUrl: {
 			default () {
 				return ({eventUrl, session}) => `${eventUrl}talk/${session.id}/`

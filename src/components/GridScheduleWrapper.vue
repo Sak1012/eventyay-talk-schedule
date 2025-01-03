@@ -12,6 +12,7 @@
 		:locale="locale",
 		:scrollParent="scrollParent",
 		:favs="favs",
+		:onHomeServer="onHomeServer",
 		@changeDay="$emit('changeDay', $event)",
 		@fav="$emit('fav', $event)",
 		@unfav="$emit('unfav', $event)"
@@ -38,7 +39,8 @@ export default {
 		timezone: String,
 		locale: String,
 		hasAmPm: Boolean,
-		scrollParent: Element
+		scrollParent: Element,
+		onHomeServer: Boolean
 	},
 	computed: {
 		gridGroups () {

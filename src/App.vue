@@ -42,6 +42,7 @@
 			:locale="locale",
 			:scrollParent="scrollParent",
 			:favs="favs",
+			:onHomeServer="onHomeServer",
 			@changeDay="setCurrentDay($event)",
 			@fav="fav($event)",
 			@unfav="unfav($event)")
@@ -55,6 +56,7 @@
 			:locale="locale",
 			:scrollParent="scrollParent",
 			:favs="favs",
+			:onHomeServer="onHomeServer",
 			@changeDay="setCurrentDay($event)",
 			@fav="fav($event)",
 			@unfav="unfav($event)")
