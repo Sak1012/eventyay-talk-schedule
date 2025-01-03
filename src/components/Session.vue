@@ -16,7 +16,7 @@ a.c-linear-schedule-session(:class="{faved}", :style="style", :href="link", @cli
 					img(v-else-if="speaker.avatar_thumbnail_default", :src="speaker.avatar_thumbnail_default")
 					img(v-else-if="speaker.avatar", :src="speaker.avatar")
 			.names {{ session.speakers.map(s => s.name).join(', ') }}
-		.abstract(v-if="showAbstract", v-html="abstract")
+		.abstract(v-if="showAbstract", v-html="abstractText")
 		.bottom-info
 			.track(v-if="session.track") {{ getLocalizedString(session.track.name) }}
 			.room(v-if="showRoom && session.room") {{ getLocalizedString(session.room.name) }}
@@ -111,7 +111,7 @@ export default {
 		isLive () {
 			return this.session.start < this.now && this.session.end > this.now
 		},
-		abstract () {
+		abstractText () {
 			try {
 				return markdownIt.renderInline(this.session.abstract)
 			} catch (error) {
