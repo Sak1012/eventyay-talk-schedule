@@ -97,6 +97,10 @@
 				h3 {{ popoverContent.contentObject.name }}
 				.speaker-content.card-content
 					.text-content
+						template(v-if="popoverContent.contentObject.isLoading")
+							bunt-progress-circular(size="big", :page="true")
+						template(v-else)
+							.biography(v-if="popoverContent.contentObject.biography", v-html="markdownIt.render(popoverContent.contentObject.biography)")
 					.img-wrapper
 						img(v-if="popoverContent.contentObject.avatar", :src="popoverContent.contentObject.avatar", :alt="popoverContent.contentObject.name")
 						.avatar-placeholder(v-else)
@@ -464,19 +468,47 @@ export default {
 			}
 			if (!this.favs.length) this.onlyFavs = false
 		},
-		showSpeakerDetails(speaker, ev) {
+		async showSpeakerDetails(speaker, ev) {
 			ev.preventDefault()
+
+			// Find speaker in schedule data
+			const speakerObj = this.schedule.speakers.find(s => s.code === speaker.code)
+
 			const speakerSessions = this.sessions.filter(session =>
 				session.speakers?.some(s => s.code === speaker.code)
 			)
+
+			// Show speaker immediately with loading state
 			this.popoverContent = {
 				contentType: 'speaker',
 				contentObject: {
-					...speaker,
-					sessions: speakerSessions
+					...speakerObj,
+					sessions: speakerSessions,
+					biography: speakerObj.apiContent?.biography,
+					isLoading: !speakerObj.apiContent
 				}
 			}
 			this.$refs.sessionPopover?.showPopover()
+
+			// Fetch additional data if needed
+			if (!speakerObj.apiContent) {
+				try {
+					speakerObj.apiContent = await this.remoteApiRequest(`speakers/${speaker.code}/`, 'GET')
+					// Update content with fetched biography
+					this.popoverContent = {
+						contentType: 'speaker',
+						contentObject: {
+							...speakerObj,
+							sessions: speakerSessions,
+							biography: speakerObj.apiContent.biography,
+							isLoading: false
+						}
+					}
+				} catch (e) {
+					console.error('Failed to fetch speaker details:', e)
+					this.popoverContent.contentObject.isLoading = false
+				}
+			}
 		},
 		async showSessionDetails(session, ev) {
 			ev.preventDefault()
