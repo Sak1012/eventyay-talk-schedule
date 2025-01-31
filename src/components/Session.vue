@@ -2,6 +2,7 @@
 a.c-linear-schedule-session(:class="{faved}", :style="style", :href="link", @click="onSessionLinkClick($event, session)", :target="linkTarget")
 	.time-box
 		.start(:class="{'has-ampm': hasAmPm}")
+			.date(v-if="showDate") {{ shortDate }}
 			.time {{ startTime.time }}
 			.ampm(v-if="startTime.ampm") {{ startTime.ampm }}
 		.duration {{ getPrettyDuration(session.start, session.end) }}
@@ -34,7 +35,7 @@ a.c-linear-schedule-session(:class="{faved}", :style="style", :href="link", @cli
 <script>
 import { DateTime } from 'luxon'
 import MarkdownIt from 'markdown-it'
-import { getLocalizedString, getPrettyDuration, timeWithoutAmPm, timeAmPm} from '~/utils'
+import { getLocalizedString, getPrettyDuration, getSessionTime } from '~/utils'
 
 const markdownIt = MarkdownIt({
 	linkify: true,
@@ -53,6 +54,10 @@ export default {
 			type: Boolean,
 			default: true
 		},
+		showDate: {
+			type: Boolean,
+			default: false
+		},
 		faved: {
 			type: Boolean,
 			default: false
@@ -67,12 +72,13 @@ export default {
 	},
 	inject: {
 		eventUrl: { default: null },
-		linkTarget: { default () {
-			return this.onHomeServer ? '_self' : '_blank'
-		} },
+		linkTarget: { default: '_self' },
 		generateSessionLinkUrl: {
 			default () {
-				return ({eventUrl, session}) => `${eventUrl}talk/${session.id}/`
+				return ({eventUrl, session}) => {
+					if (!this.onHomeServer) return `#session/${session.id}/`
+					return`${eventUrl}talk/${session.id}/`
+				}
 			}
 		},
 		onSessionLinkClick: {
@@ -85,8 +91,7 @@ export default {
 		return {
 			getPrettyDuration,
 			getLocalizedString,
-			timeWithoutAmPm,
-			timeAmPm
+			getSessionTime,
 		}
 	},
 	computed: {
@@ -99,17 +104,13 @@ export default {
 			}
 		},
 		startTime () {
-			// check if 12h or 24h locale
-			if (this.hasAmPm) {
-				return {
-					time: timeWithoutAmPm(this.session.start.setZone(this.timezone), this.locale),
-					ampm: timeAmPm(this.session.start.setZone(this.timezone), this.locale)
-				}
-			} else {
-				return {
-					time: this.session.start.setZone(this.timezone).toLocaleString({ hour: 'numeric', 'minute': 'numeric' })
-				}
-			}
+			return getSessionTime(this.session, this.timezone, this.locale, this.hasAmPm)
+		},
+		shortDate () {
+			return this.session.start.setZone(this.timezone).toLocaleString({
+				month: 'short',
+				day: 'numeric'
+			})
 		},
 		isLive () {
 			return this.session.start < this.now && this.session.end > this.now
@@ -145,8 +146,9 @@ export default {
 	min-height: 96px
 	margin: 8px
 	overflow: hidden
-	color: $clr-primary-text-light
+	color: rgb(13 15 16)
 	position: relative
+	font-size: 14px
 	.time-box
 		width: 69px
 		box-sizing: border-box
@@ -161,6 +163,8 @@ export default {
 			font-size: 16px
 			font-weight: 600
 			margin-bottom: 8px
+			.date
+				margin-bottom: 4px
 			display: flex
 			flex-direction: column
 			align-items: flex-end

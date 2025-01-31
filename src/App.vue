@@ -66,19 +66,81 @@
 			.btn.btn-danger(@click="errorMessages = errorMessages.filter(m => m !== message)") x
 			div.message {{ message }}
 	#bunt-teleport-target(ref="teleportTarget")
+	dialog#session-modal(ref="detailsModal", @click.stop="$refs.detailsModal?.close()")
+		.dialog-inner(@click.stop="")
+			button.close-button(@click="$refs.detailsModal?.close()") ✕
+			template(v-if="modalContent && modalContent.contentType === 'session'")
+				h3 {{ modalContent.contentObject.title }}
+				.card-content
+					.facts
+						.time
+							span {{ modalContent.contentObject.start.toLocaleString({ weekday: 'long', day: 'numeric', month: 'long' }) }}, {{ getSessionTime(modalContent.contentObject, currentTimezone, locale, hasAmPm).time }}
+							span.ampm(v-if="getSessionTime(modalContent.contentObject, currentTimezone, locale, hasAmPm).ampm") {{ getSessionTime(modalContent.contentObject, currentTimezone, locale, hasAmPm).ampm }}
+						.room(v-if="modalContent.contentObject.room") {{ getLocalizedString(modalContent.contentObject.room.name) }}
+						.track(v-if="modalContent.contentObject.track", :style="{ color: modalContent.contentObject.track.color }") {{ getLocalizedString(modalContent.contentObject.track.name) }}
+					.text-content
+						.abstract(v-if="modalContent.contentObject.abstract", v-html="markdownIt.renderInline(modalContent.contentObject.abstract)")
+						template(v-if="modalContent.contentObject.isLoading")
+							bunt-progress-circular(size="big", :page="true")
+						template(v-else)
+							hr(v-if="modalContent.contentObject.abstract?.length && modalContent.contentObject.description?.length")
+							.description(v-if="modalContent.contentObject.description", v-html="markdownIt.render(modalContent.contentObject.description)")
+				.speakers(v-if="modalContent.contentObject.speakers")
+					a.speaker.inner-card(v-for="speaker in modalContent.contentObject.speakers", @click="showSpeakerDetails(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
+						.img-wrapper
+							img(v-if="speaker.avatar", :src="speaker.avatar", :alt="speaker.name")
+							.avatar-placeholder(v-else)
+								svg(viewBox="0 0 24 24")
+									path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
+						.inner-card-content {{ speaker.name }}
+			template(v-if="modalContent && modalContent.contentType === 'speaker'")
+				.speaker-details
+					h3 {{ modalContent.contentObject.name }}
+					.speaker-content.card-content
+						.text-content
+							template(v-if="modalContent.contentObject.isLoading")
+								bunt-progress-circular(size="big", :page="true")
+							template(v-else)
+								.biography(v-if="modalContent.contentObject.biography", v-html="markdownIt.render(modalContent.contentObject.biography)")
+						.img-wrapper
+							img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
+							.avatar-placeholder(v-else)
+								svg(viewBox="0 0 24 24")
+									path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
+				.speaker-sessions
+					session(
+						v-for="session in modalContent.contentObject.sessions",
+						:session="session",
+						:showDate="true",
+						:now="now",
+						:timezone="currentTimezone",
+						:locale="locale",
+						:hasAmPm="hasAmPm",
+						:faved="favs.includes(session.id)",
+						:onHomeServer="onHomeServer",
+						@fav="fav(session.id)",
+						@unfav="unfav(session.id)",
+					)
 	a(href="https://pretalx.com", target="_blank", v-if="!onHomeServer").powered-by powered by
 		span.pretalx(href="https://pretalx.com", target="_blank") pretalx
 </template>
 <script>
 import { computed } from 'vue'
 import { DateTime, Settings } from 'luxon'
+import MarkdownIt from 'markdown-it'
 import LinearSchedule from '~/components/LinearSchedule'
 import GridScheduleWrapper from '~/components/GridScheduleWrapper'
-import { findScrollParent, getLocalizedString } from '~/utils'
+import Session from '~/components/Session'
+import { findScrollParent, getLocalizedString, getSessionTime } from '~/utils'
+
+const markdownIt = MarkdownIt({
+	linkify: true,
+	breaks: true
+})
 
 export default {
 	name: 'PretalxSchedule',
-	components: { LinearSchedule, GridScheduleWrapper },
+	components: { LinearSchedule, GridScheduleWrapper, Session },
 	props: {
 		eventUrl: String,
 		locale: String,
@@ -99,12 +161,20 @@ export default {
 	provide () {
 		return {
 			eventUrl: this.eventUrl,
-			buntTeleportTarget: computed(() => this.$refs.teleportTarget)
+			buntTeleportTarget: computed(() => this.$refs.teleportTarget),
+			onSessionLinkClick: (event, session) => {
+				if (this.onHomeServer) return
+				event.preventDefault()
+
+				this.showSessionDetails(session, event)
+			}
 		}
 	},
 	data () {
 		return {
 			getLocalizedString,
+			getSessionTime,
+			markdownIt,
 			scrollParentWidth: Infinity,
 			schedule: null,
 			userTimezone: null,
@@ -122,6 +192,7 @@ export default {
 			translationMessages: {},
 			errorMessages: [],
 			displayDates: this.dateFilter?.split(',').filter(d => d.length === 10) || [],
+			modalContent: null,
 		}
 	},
 	computed: {
@@ -308,16 +379,24 @@ export default {
 		onScrollParentResize (entries) {
 			this.scrollParentWidth = entries[0].contentRect.width
 		},
-		async apiRequest (path, method, data) {
-			const url = `${this.apiUrl}${path}`
+		async remoteApiRequest (path, method, data) {
+			const eventUrlObj = new URL(this.eventUrl)
+			const baseUrl = `${eventUrlObj.protocol}//${eventUrlObj.host}/api/events/${this.eventSlug}/`
+			return this.apiRequest(path, method, data, baseUrl)
+		},
+		async apiRequest (path, method, data, baseUrl) {
+			const base = baseUrl || this.apiUrl
+			const url = `${base}${path}`
 			const headers = new Headers()
-			headers.append('Content-Type', 'application/json')
+			if (this.onHomeServer) {
+				headers.append('Content-Type', 'application/json')
+			}
 			if (method === 'POST' || method === 'DELETE') headers.append('X-CSRFToken', document.cookie.split('pretalx_csrftoken=').pop().split(';').shift())
 			const response = await fetch(url, {
 				method,
 				headers,
 				body: JSON.stringify(data),
-				credentials: 'same-origin'
+				credentials: this.onHomeServer ? 'same-origin' : 'omit'
 			})
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`)
@@ -389,6 +468,84 @@ export default {
 			}
 			if (!this.favs.length) this.onlyFavs = false
 		},
+		async showSpeakerDetails(speaker, ev) {
+			ev.preventDefault()
+
+			// Find speaker in schedule data
+			const speakerObj = this.schedule.speakers.find(s => s.code === speaker.code)
+
+			const speakerSessions = this.sessions.filter(session =>
+				session.speakers?.some(s => s.code === speaker.code)
+			)
+
+			// Show speaker immediately with loading state
+			this.modalContent = {
+				contentType: 'speaker',
+				contentObject: {
+					...speakerObj,
+					sessions: speakerSessions,
+					biography: speakerObj.apiContent?.biography,
+					isLoading: !speakerObj.apiContent
+				}
+			}
+			this.$refs.detailsModal?.showModal()
+
+			// Fetch additional data if needed
+			if (!speakerObj.apiContent) {
+				try {
+					speakerObj.apiContent = await this.remoteApiRequest(`speakers/${speaker.code}/`, 'GET')
+					// Update content with fetched biography
+					this.modalContent = {
+						contentType: 'speaker',
+						contentObject: {
+							...speakerObj,
+							sessions: speakerSessions,
+							biography: speakerObj.apiContent.biography,
+							isLoading: false
+						}
+					}
+				} catch (e) {
+					console.error('Failed to fetch speaker details:', e)
+					this.modalContent.contentObject.isLoading = false
+				}
+			}
+		},
+		async showSessionDetails(session, ev) {
+			ev.preventDefault()
+
+			// Find the talk in the schedule
+			const talk = this.schedule.talks.find(t => t.code === session.id)
+
+			// Show session immediately with loading state
+			this.modalContent = {
+				contentType: 'session',
+				contentObject: {
+					...session,
+					description: talk.apiContent?.description,
+					isLoading: !talk.apiContent
+				}
+			}
+			this.$refs.detailsModal?.showModal()
+
+			// Fetch additional data if needed
+			if (!talk.apiContent) {
+				try {
+					talk.apiContent = await this.remoteApiRequest(`submissions/${session.id}/`, 'GET')
+					// Update content with fetched description
+					this.modalContent = {
+						contentType: 'session',
+						contentObject: {
+							...session,
+							description: talk.apiContent.description,
+							isLoading: false
+						}
+					}
+				} catch (e) {
+					console.error('Failed to fetch session details:', e)
+					this.modalContent.contentObject.isLoading = false
+				}
+			}
+		},
 		resetFilteredTracks () {
 			this.allTracks.forEach(t => t.selected = false)
 		}
@@ -404,6 +561,10 @@ export default {
 	padding: 32px
 	.error-message
 		margin-top: 16px
+
+.pretalx-schedule, dialog#session-modal
+	color: rgb(13 15 16)
+
 .pretalx-schedule
 	display: flex
 	flex-direction: column
@@ -544,4 +705,123 @@ export default {
 		color: $clr-grey-600
 	&:hover .pretalx
 		color: #3aa57c
+
+#session-modal
+	padding: 0
+	border-radius: 8px
+	border: 0
+	box-shadow: 0 -2px 4px rgba(0,0,0,0.06),
+		0 1px 3px rgba(0,0,0,0.12),
+		0 8px 24px rgba(0,0,0,0.15),
+		0 16px 32px rgba(0,0,0,0.09)
+	width: calc(100vw - 32px)
+	max-width: 848px
+	max-height: calc(100vh - 64px)
+	overflow-y: auto
+	font-size: 16px
+
+	.dialog-inner
+		padding: 16px 24px
+		margin: 0
+
+	.close-button
+		position: absolute
+		top: 0
+		right: 4px
+		background: none
+		border: none
+		cursor: pointer
+		padding: 8px
+		color: $clr-grey-600
+		font-size: 22px
+		font-weight: bold
+		&:hover
+			color: $clr-grey-900
+
+	h3
+		margin: 8px 0
+
+	.ampm
+		margin-left: 4px
+
+	.facts
+		display: flex
+		flex-wrap: wrap
+		color: $clr-grey-600
+		margin-bottom: 8px
+		border-bottom: 1px solid $clr-grey-300
+		&>*
+			margin-right: 4px
+			margin-bottom: 8px
+			&:not(:last-child):after
+				content: ','
+
+	.card-content
+			display: flex
+			flex-direction: column
+
+	.text-content
+			padding: 8px 0
+			margin-bottom: 8px
+			.abstract
+				font-weight: bold
+			p
+				font-size: 16px
+			hr
+				color: #ced4da
+				height: 0
+				border: 0
+				border-top: 1px solid #e0e0e0
+				margin: 16px 0
+
+	.inner-card
+		display: flex
+		margin-bottom: 12px
+		cursor: pointer
+		border-radius: 6px
+		padding: 12px
+		border-radius: 6px
+		border: 1px solid #ced4da
+		min-height: 96px
+		align-items: flex-start
+		padding: 8px
+		text-decoration: none
+		color: var(--pretalx-clr-primary)
+
+		.inner-card-content
+			margin-top: 8px
+			margin-left: 8px
+
+	.img-wrapper
+		padding: 4px 16px 4px 4px
+		width: 100px
+		height: 100px
+		img, .avatar-placeholder
+			width: 100px
+			height: 100px
+			border-radius: 50%
+		img
+			object-fit: cover
+		.avatar-placeholder
+			background: rgba(0,0,0,0.1)
+			display: flex
+			align-items: center
+			justify-content: center
+			svg
+				width: 60%
+				height: 60%
+				color: rgba(0,0,0,0.3)
+
+	.speaker-details
+		h3
+			margin-bottom: 0
+		.speaker-content
+			display: flex
+			flex-direction: row
+			align-items: flex-start
+			justify-content: space-between
+			margin-bottom: 16px
+
+			.biography
+					margin-top: 8px
 </style>
