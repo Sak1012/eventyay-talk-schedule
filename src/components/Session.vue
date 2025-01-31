@@ -67,12 +67,13 @@ export default {
 	},
 	inject: {
 		eventUrl: { default: null },
-		linkTarget: { default () {
-			return this.onHomeServer ? '_self' : '_blank'
-		} },
+		linkTarget: { default: '_self' },
 		generateSessionLinkUrl: {
 			default () {
-				return ({eventUrl, session}) => `${eventUrl}talk/${session.id}/`
+				return ({eventUrl, session}) => {
+					if (!this.onHomeServer) return `#session/${session.id}/`
+					return`${eventUrl}talk/${session.id}/`
+				}
 			}
 		},
 		onSessionLinkClick: {

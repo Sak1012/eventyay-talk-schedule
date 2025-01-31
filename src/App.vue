@@ -66,6 +66,14 @@
 			.btn.btn-danger(@click="errorMessages = errorMessages.filter(m => m !== message)") x
 			div.message {{ message }}
 	#bunt-teleport-target(ref="teleportTarget")
+	dialog#session-popover(popover="auto", ref="sessionPopover")
+		template(v-if="popoverContent && popoverContent.contentType === 'session'")
+			h3 {{ popoverContent.contentObject.title }}
+			.speakers(v-if="popoverContent.contentObject.speakers")
+				.speaker(v-for="speaker in popoverContent.contentObject.speakers")
+					img(v-if="speaker.avatar", :src="speaker.avatar", :alt="speaker.name")
+					span {{ speaker.name }}
+			.abstract(v-if="popoverContent.contentObject.abstract") {{ popoverContent.contentObject.abstract }}
 	a(href="https://pretalx.com", target="_blank", v-if="!onHomeServer").powered-by powered by
 		span.pretalx(href="https://pretalx.com", target="_blank") pretalx
 </template>
@@ -99,7 +107,14 @@ export default {
 	provide () {
 		return {
 			eventUrl: this.eventUrl,
-			buntTeleportTarget: computed(() => this.$refs.teleportTarget)
+			buntTeleportTarget: computed(() => this.$refs.teleportTarget),
+			onSessionLinkClick: (event, session) => {
+				if (this.onHomeServer) return
+				event.preventDefault()
+
+				this.popoverContent = { contentType: 'session', contentObject: session }
+				this.$refs.sessionPopover?.showPopover()
+			}
 		}
 	},
 	data () {
@@ -122,6 +137,7 @@ export default {
 			translationMessages: {},
 			errorMessages: [],
 			displayDates: this.dateFilter?.split(',').filter(d => d.length === 10) || [],
+			popoverContent: null,
 		}
 	},
 	computed: {
