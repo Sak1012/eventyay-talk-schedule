@@ -78,9 +78,9 @@
 					.room(v-if="popoverContent.contentObject.room") {{ getLocalizedString(popoverContent.contentObject.room.name) }}
 					.track(v-if="popoverContent.contentObject.track", :style="{ color: popoverContent.contentObject.track.color }") {{ getLocalizedString(popoverContent.contentObject.track.name) }}
 				.text-content
-					.abstract(v-if="popoverContent.contentObject.abstract") {{ popoverContent.contentObject.abstract }}
+					.abstract(v-if="popoverContent.contentObject.abstract", v-html="markdownIt.renderInline(popoverContent.contentObject.abstract)")
 			.speakers(v-if="popoverContent.contentObject.speakers")
-				a.speaker.inner-card(v-for="speaker in popoverContent.contentObject.speakers", @click="showSpeakerDetails(speaker)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
+				a.speaker.inner-card(v-for="speaker in popoverContent.contentObject.speakers", @click="showSpeakerDetails(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
 					.img-wrapper
 						img(v-if="speaker.avatar", :src="speaker.avatar", :alt="speaker.name")
 						.avatar-placeholder(v-else)
@@ -118,10 +118,16 @@
 <script>
 import { computed } from 'vue'
 import { DateTime, Settings } from 'luxon'
+import MarkdownIt from 'markdown-it'
 import LinearSchedule from '~/components/LinearSchedule'
 import GridScheduleWrapper from '~/components/GridScheduleWrapper'
 import Session from '~/components/Session'
 import { findScrollParent, getLocalizedString, getSessionTime } from '~/utils'
+
+const markdownIt = MarkdownIt({
+	linkify: true,
+	breaks: true
+})
 
 export default {
 	name: 'PretalxSchedule',
@@ -151,7 +157,7 @@ export default {
 				if (this.onHomeServer) return
 				event.preventDefault()
 
-				this.showSessionDetails(session)
+				this.showSessionDetails(session, event)
 			}
 		}
 	},
@@ -159,6 +165,7 @@ export default {
 		return {
 			getLocalizedString,
 			getSessionTime,
+			markdownIt,
 			scrollParentWidth: Infinity,
 			schedule: null,
 			userTimezone: null,
@@ -444,7 +451,8 @@ export default {
 			}
 			if (!this.favs.length) this.onlyFavs = false
 		},
-		showSpeakerDetails(speaker) {
+		showSpeakerDetails(speaker, ev) {
+			ev.preventDefault()
 			const speakerSessions = this.sessions.filter(session =>
 				session.speakers?.some(s => s.code === speaker.code)
 			)
@@ -457,7 +465,8 @@ export default {
 			}
 			this.$refs.sessionPopover?.showPopover()
 		},
-		showSessionDetails(session) {
+		showSessionDetails(session, ev) {
+			ev.preventDefault()
 			this.popoverContent = {
 				contentType: 'session',
 				contentObject: session
