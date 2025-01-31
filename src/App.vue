@@ -463,6 +463,10 @@ export default {
 	padding: 32px
 	.error-message
 		margin-top: 16px
+
+.pretalx-schedule, dialog[popover]
+	color: rgb(13 15 16)
+
 .pretalx-schedule
 	display: flex
 	flex-direction: column

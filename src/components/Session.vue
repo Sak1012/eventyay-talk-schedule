@@ -135,7 +135,7 @@ export default {
 	min-height: 96px
 	margin: 8px
 	overflow: hidden
-	color: $clr-primary-text-light
+	color: rgb(13 15 16)
 	position: relative
 	.time-box
 		width: 69px
