@@ -79,6 +79,11 @@
 					.track(v-if="popoverContent.contentObject.track", :style="{ color: popoverContent.contentObject.track.color }") {{ getLocalizedString(popoverContent.contentObject.track.name) }}
 				.text-content
 					.abstract(v-if="popoverContent.contentObject.abstract", v-html="markdownIt.renderInline(popoverContent.contentObject.abstract)")
+					template(v-if="popoverContent.contentObject.isLoading")
+						bunt-progress-circular(size="big", :page="true")
+					template(v-else)
+						hr(v-if="popoverContent.contentObject.abstract?.length && popoverContent.contentObject.description?.length")
+						.description(v-if="popoverContent.contentObject.description", v-html="markdownIt.render(popoverContent.contentObject.description)")
 			.speakers(v-if="popoverContent.contentObject.speakers")
 				a.speaker.inner-card(v-for="speaker in popoverContent.contentObject.speakers", @click="showSpeakerDetails(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
 					.img-wrapper
@@ -370,16 +375,24 @@ export default {
 		onScrollParentResize (entries) {
 			this.scrollParentWidth = entries[0].contentRect.width
 		},
-		async apiRequest (path, method, data) {
-			const url = `${this.apiUrl}${path}`
+		async remoteApiRequest (path, method, data) {
+			const eventUrlObj = new URL(this.eventUrl)
+			const baseUrl = `${eventUrlObj.protocol}//${eventUrlObj.host}/api/events/${this.eventSlug}/`
+			return this.apiRequest(path, method, data, baseUrl)
+		},
+		async apiRequest (path, method, data, baseUrl) {
+			const base = baseUrl || this.apiUrl
+			const url = `${base}${path}`
 			const headers = new Headers()
-			headers.append('Content-Type', 'application/json')
+			if (this.onHomeServer) {
+				headers.append('Content-Type', 'application/json')
+			}
 			if (method === 'POST' || method === 'DELETE') headers.append('X-CSRFToken', document.cookie.split('pretalx_csrftoken=').pop().split(';').shift())
 			const response = await fetch(url, {
 				method,
 				headers,
 				body: JSON.stringify(data),
-				credentials: 'same-origin'
+				credentials: this.onHomeServer ? 'same-origin' : 'omit'
 			})
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`)
@@ -465,13 +478,41 @@ export default {
 			}
 			this.$refs.sessionPopover?.showPopover()
 		},
-		showSessionDetails(session, ev) {
+		async showSessionDetails(session, ev) {
 			ev.preventDefault()
+
+			// Find the talk in the schedule
+			const talk = this.schedule.talks.find(t => t.code === session.id)
+
+			// Show session immediately with loading state
 			this.popoverContent = {
 				contentType: 'session',
-				contentObject: session
+				contentObject: {
+					...session,
+					description: talk.apiContent?.description,
+					isLoading: !talk.apiContent
+				}
 			}
 			this.$refs.sessionPopover?.showPopover()
+
+			// Fetch additional data if needed
+			if (!talk.apiContent) {
+				try {
+					talk.apiContent = await this.remoteApiRequest(`submissions/${session.id}/`, 'GET')
+					// Update content with fetched description
+					this.popoverContent = {
+						contentType: 'session',
+						contentObject: {
+							...session,
+							description: talk.apiContent.description,
+							isLoading: false
+						}
+					}
+				} catch (e) {
+					console.error('Failed to fetch session details:', e)
+					this.popoverContent.contentObject.isLoading = false
+				}
+			}
 		},
 		resetFilteredTracks () {
 			this.allTracks.forEach(t => t.selected = false)
@@ -687,8 +728,16 @@ export default {
 	.text-content
 			padding: 8px 0
 			margin-bottom: 8px
-			font-size: 16px
-			color: var()
+			.abstract
+				font-weight: bold
+			p
+				font-size: 16px
+			hr
+				color: #ced4da
+				height: 0
+				border: 0
+				border-top: 1px solid #e0e0e0
+				margin: 16px 0
 
 	.inner-card
 		display: flex
