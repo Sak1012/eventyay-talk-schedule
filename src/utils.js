@@ -36,3 +36,16 @@ export function timeAmPm (time, locale) {
 	const parts = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: 'numeric', timeZone: time.zoneName }).formatToParts(time)
 	return parts.filter(part => part.type === 'dayPeriod')[0].value
 }
+
+export function getSessionTime(session, timezone, locale, hasAmPm) {
+	if (hasAmPm) {
+		return {
+			time: timeWithoutAmPm(session.start.setZone(timezone), locale),
+			ampm: timeAmPm(session.start.setZone(timezone), locale)
+		}
+	} else {
+		return {
+			time: session.start.setZone(timezone).toLocaleString({ hour: 'numeric', 'minute': 'numeric' })
+		}
+	}
+}

@@ -69,11 +69,34 @@
 	dialog#session-popover(popover="auto", ref="sessionPopover")
 		template(v-if="popoverContent && popoverContent.contentType === 'session'")
 			h3 {{ popoverContent.contentObject.title }}
+			.session-meta
+				.time
+					.time-value(:class="{'has-ampm': hasAmPm}")
+						span {{ getSessionTime(popoverContent.contentObject, currentTimezone, locale, hasAmPm).time }}
+						span.ampm(v-if="getSessionTime(popoverContent.contentObject, currentTimezone, locale, hasAmPm).ampm") {{ getSessionTime(popoverContent.contentObject, currentTimezone, locale, hasAmPm).ampm }}
+				.room(v-if="popoverContent.contentObject.room") {{ getLocalizedString(popoverContent.contentObject.room.name) }}
+				.track(v-if="popoverContent.contentObject.track", :style="{ color: popoverContent.contentObject.track.color }") {{ getLocalizedString(popoverContent.contentObject.track.name) }}
 			.speakers(v-if="popoverContent.contentObject.speakers")
-				.speaker(v-for="speaker in popoverContent.contentObject.speakers")
+				a.speaker(v-for="speaker in popoverContent.contentObject.speakers", @click="showSpeakerDetails(speaker)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
 					img(v-if="speaker.avatar", :src="speaker.avatar", :alt="speaker.name")
 					span {{ speaker.name }}
 			.abstract(v-if="popoverContent.contentObject.abstract") {{ popoverContent.contentObject.abstract }}
+		template(v-if="popoverContent && popoverContent.contentType === 'speaker'")
+			.speaker-details
+				.speaker-header
+					img(v-if="popoverContent.contentObject.avatar", :src="popoverContent.contentObject.avatar", :alt="popoverContent.contentObject.name")
+					h3 {{ popoverContent.contentObject.name }}
+				.speaker-sessions
+					h4 Sessions:
+					a.session(v-for="session in popoverContent.contentObject.sessions", @click="showSessionDetails(session)", :key="session.id", :href="`#session/${session.id}`")
+						.session-title {{ session.title }}
+						.session-details(style="cursor: pointer")
+							.session-time
+								.time(:class="{'has-ampm': hasAmPm}")
+									span.time-value {{ getSessionTime(session, currentTimezone, locale, hasAmPm).time }}
+									span.ampm(v-if="getSessionTime(session, currentTimezone, locale, hasAmPm).ampm") {{ getSessionTime(session, currentTimezone, locale, hasAmPm).ampm }}
+							.room(v-if="session.room") {{ getLocalizedString(session.room.name) }}
+							.track(v-if="session.track", :style="{ color: session.track.color }") {{ getLocalizedString(session.track.name) }}
 	a(href="https://pretalx.com", target="_blank", v-if="!onHomeServer").powered-by powered by
 		span.pretalx(href="https://pretalx.com", target="_blank") pretalx
 </template>
@@ -82,7 +105,7 @@ import { computed } from 'vue'
 import { DateTime, Settings } from 'luxon'
 import LinearSchedule from '~/components/LinearSchedule'
 import GridScheduleWrapper from '~/components/GridScheduleWrapper'
-import { findScrollParent, getLocalizedString } from '~/utils'
+import { findScrollParent, getLocalizedString, getSessionTime } from '~/utils'
 
 export default {
 	name: 'PretalxSchedule',
@@ -112,14 +135,14 @@ export default {
 				if (this.onHomeServer) return
 				event.preventDefault()
 
-				this.popoverContent = { contentType: 'session', contentObject: session }
-				this.$refs.sessionPopover?.showPopover()
+				this.showSessionDetails(session)
 			}
 		}
 	},
 	data () {
 		return {
 			getLocalizedString,
+			getSessionTime,
 			scrollParentWidth: Infinity,
 			schedule: null,
 			userTimezone: null,
@@ -404,6 +427,26 @@ export default {
 				this.pushErrorMessage(this.translationMessages.favs_not_logged_in)
 			}
 			if (!this.favs.length) this.onlyFavs = false
+		},
+		showSpeakerDetails(speaker) {
+			const speakerSessions = this.sessions.filter(session =>
+				session.speakers?.some(s => s.code === speaker.code)
+			)
+			this.popoverContent = {
+				contentType: 'speaker',
+				contentObject: {
+					...speaker,
+					sessions: speakerSessions
+				}
+			}
+			this.$refs.sessionPopover?.showPopover()
+		},
+		showSessionDetails(session) {
+			this.popoverContent = {
+				contentType: 'session',
+				contentObject: session
+			}
+			this.$refs.sessionPopover?.showPopover()
 		},
 		resetFilteredTracks () {
 			this.allTracks.forEach(t => t.selected = false)

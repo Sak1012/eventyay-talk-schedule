@@ -34,7 +34,7 @@ a.c-linear-schedule-session(:class="{faved}", :style="style", :href="link", @cli
 <script>
 import { DateTime } from 'luxon'
 import MarkdownIt from 'markdown-it'
-import { getLocalizedString, getPrettyDuration, timeWithoutAmPm, timeAmPm} from '~/utils'
+import { getLocalizedString, getPrettyDuration, getSessionTime } from '~/utils'
 
 const markdownIt = MarkdownIt({
 	linkify: true,
@@ -86,8 +86,7 @@ export default {
 		return {
 			getPrettyDuration,
 			getLocalizedString,
-			timeWithoutAmPm,
-			timeAmPm
+			getSessionTime,
 		}
 	},
 	computed: {
@@ -100,17 +99,7 @@ export default {
 			}
 		},
 		startTime () {
-			// check if 12h or 24h locale
-			if (this.hasAmPm) {
-				return {
-					time: timeWithoutAmPm(this.session.start.setZone(this.timezone), this.locale),
-					ampm: timeAmPm(this.session.start.setZone(this.timezone), this.locale)
-				}
-			} else {
-				return {
-					time: this.session.start.setZone(this.timezone).toLocaleString({ hour: 'numeric', 'minute': 'numeric' })
-				}
-			}
+			return getSessionTime(this.session, this.timezone, this.locale, this.hasAmPm)
 		},
 		isLive () {
 			return this.session.start < this.now && this.session.end > this.now
