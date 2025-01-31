@@ -79,12 +79,12 @@
 						.room(v-if="modalContent.contentObject.room") {{ getLocalizedString(modalContent.contentObject.room.name) }}
 						.track(v-if="modalContent.contentObject.track", :style="{ color: modalContent.contentObject.track.color }") {{ getLocalizedString(modalContent.contentObject.track.name) }}
 					.text-content
-						.abstract(v-if="modalContent.contentObject.abstract", v-html="markdownIt.renderInline(modalContent.contentObject.abstract)")
+						.abstract(v-if="modalContent.contentObject.renderedAbstract", v-html="modalContent.contentObject.renderedAbstract")
 						template(v-if="modalContent.contentObject.isLoading")
 							bunt-progress-circular(size="big", :page="true")
 						template(v-else)
 							hr(v-if="modalContent.contentObject.abstract?.length && modalContent.contentObject.description?.length")
-							.description(v-if="modalContent.contentObject.description", v-html="markdownIt.render(modalContent.contentObject.description)")
+							.description(v-if="modalContent.contentObject.renderedDescription", v-html="modalContent.contentObject.renderedDescription")
 				.speakers(v-if="modalContent.contentObject.speakers")
 					a.speaker.inner-card(v-for="speaker in modalContent.contentObject.speakers", @click="showSpeakerDetails(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
 						.img-wrapper
@@ -101,7 +101,7 @@
 							template(v-if="modalContent.contentObject.isLoading")
 								bunt-progress-circular(size="big", :page="true")
 							template(v-else)
-								.biography(v-if="modalContent.contentObject.biography", v-html="markdownIt.render(modalContent.contentObject.biography)")
+								.biography(v-if="modalContent.contentObject.biography", v-html="modalContent.contentObject.renderedBiography")
 						.img-wrapper
 							img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
 							.avatar-placeholder(v-else)
@@ -485,6 +485,7 @@ export default {
 					...speakerObj,
 					sessions: speakerSessions,
 					biography: speakerObj.apiContent?.biography,
+					renderedBiography: speakerObj.apiContent?.biography ? markdownIt.render(speakerObj.apiContent.biography) : null,
 					isLoading: !speakerObj.apiContent
 				}
 			}
@@ -501,6 +502,7 @@ export default {
 							...speakerObj,
 							sessions: speakerSessions,
 							biography: speakerObj.apiContent.biography,
+							renderedBiography: speakerObj.apiContent?.biography ? markdownIt.render(speakerObj.apiContent.biography) : null,
 							isLoading: false
 						}
 					}
@@ -521,7 +523,8 @@ export default {
 				contentType: 'session',
 				contentObject: {
 					...session,
-					description: talk.apiContent?.description,
+					renderedAbstract: talk.apiContent?.abstract ? markdownIt.render(talk.apiContent.abstract) : null,
+					renderedDescription: talk.apiContent?.description ? markdownIt.render(talk.apiContent.description) : null,
 					isLoading: !talk.apiContent
 				}
 			}
@@ -537,6 +540,8 @@ export default {
 						contentObject: {
 							...session,
 							description: talk.apiContent.description,
+							renderedAbstract: talk.apiContent?.abstract ? markdownIt.render(talk.apiContent.abstract) : null,
+							renderedDescription: talk.apiContent?.description ? markdownIt.render(talk.apiContent.description) : null,
 							isLoading: false
 						}
 					}
@@ -761,7 +766,6 @@ export default {
 			flex-direction: column
 
 	.text-content
-			padding: 8px 0
 			margin-bottom: 8px
 			.abstract
 				font-weight: bold
