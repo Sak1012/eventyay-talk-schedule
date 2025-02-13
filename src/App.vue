@@ -79,12 +79,12 @@
 						.room(v-if="modalContent.contentObject.room") {{ getLocalizedString(modalContent.contentObject.room.name) }}
 						.track(v-if="modalContent.contentObject.track", :style="{ color: modalContent.contentObject.track.color }") {{ getLocalizedString(modalContent.contentObject.track.name) }}
 					.text-content
-						.abstract(v-if="modalContent.contentObject.renderedAbstract", v-html="modalContent.contentObject.renderedAbstract")
+						.abstract(v-if="modalContent.contentObject.abstract", v-html="markdownIt.render(modalContent.contentObject.abstract)")
 						template(v-if="modalContent.contentObject.isLoading")
 							bunt-progress-circular(size="big", :page="true")
 						template(v-else)
-							hr(v-if="modalContent.contentObject.abstract?.length && modalContent.contentObject.description?.length")
-							.description(v-if="modalContent.contentObject.renderedDescription", v-html="modalContent.contentObject.renderedDescription")
+							hr(v-if="modalContent.contentObject.abstract?.length && modalContent.contentObject.apiContent?.description?.length")
+							.description(v-if="modalContent.contentObject.apiContent?.description", v-html="markdownIt.render(modalContent.contentObject.apiContent.description)")
 				.speakers(v-if="modalContent.contentObject.speakers")
 					a.speaker.inner-card(v-for="speaker in modalContent.contentObject.speakers", @click="showSpeakerDetails(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
 						.img-wrapper
@@ -101,7 +101,7 @@
 							template(v-if="modalContent.contentObject.isLoading")
 								bunt-progress-circular(size="big", :page="true")
 							template(v-else)
-								.biography(v-if="modalContent.contentObject.biography", v-html="modalContent.contentObject.renderedBiography")
+								.biography(v-if="modalContent.contentObject.apiContent?.biography", v-html="markdownIt.render(modalContent.contentObject.apiContent.biography)")
 						.img-wrapper
 							img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
 							.avatar-placeholder(v-else)
@@ -484,8 +484,6 @@ export default {
 				contentObject: {
 					...speakerObj,
 					sessions: speakerSessions,
-					biography: speakerObj.apiContent?.biography,
-					renderedBiography: speakerObj.apiContent?.biography ? markdownIt.render(speakerObj.apiContent.biography) : null,
 					isLoading: !speakerObj.apiContent
 				}
 			}
@@ -495,15 +493,15 @@ export default {
 			if (!speakerObj.apiContent) {
 				try {
 					speakerObj.apiContent = await this.remoteApiRequest(`speakers/${speaker.code}/`, 'GET')
-					// Update content with fetched biography
-					this.modalContent = {
-						contentType: 'speaker',
-						contentObject: {
-							...speakerObj,
-							sessions: speakerSessions,
-							biography: speakerObj.apiContent.biography,
-							renderedBiography: speakerObj.apiContent?.biography ? markdownIt.render(speakerObj.apiContent.biography) : null,
-							isLoading: false
+					// Update modalContent if we are still on the same speaker
+					if (this.modalContent.contentObject.code === speaker.code) {
+						this.modalContent = {
+							contentType: 'speaker',
+							contentObject: {
+								...speakerObj,
+								sessions: speakerSessions,
+								isLoading: false
+							}
 						}
 					}
 				} catch (e) {
@@ -523,8 +521,6 @@ export default {
 				contentType: 'session',
 				contentObject: {
 					...session,
-					renderedAbstract: talk.apiContent?.abstract ? markdownIt.render(talk.apiContent.abstract) : null,
-					renderedDescription: talk.apiContent?.description ? markdownIt.render(talk.apiContent.description) : null,
 					isLoading: !talk.apiContent
 				}
 			}
@@ -534,15 +530,15 @@ export default {
 			if (!talk.apiContent) {
 				try {
 					talk.apiContent = await this.remoteApiRequest(`submissions/${session.id}/`, 'GET')
-					// Update content with fetched description
-					this.modalContent = {
-						contentType: 'session',
-						contentObject: {
-							...session,
-							description: talk.apiContent.description,
-							renderedAbstract: talk.apiContent?.abstract ? markdownIt.render(talk.apiContent.abstract) : null,
-							renderedDescription: talk.apiContent?.description ? markdownIt.render(talk.apiContent.description) : null,
-							isLoading: false
+					// Update content with fetched description if we are still on the same session
+					if (this.modalContent.contentObject.id === session.id) {
+						this.modalContent = {
+							contentType: 'session',
+							contentObject: {
+								...session,
+								apiContent: talk.apiContent,
+								isLoading: false
+							}
 						}
 					}
 				} catch (e) {
