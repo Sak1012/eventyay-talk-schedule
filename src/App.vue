@@ -71,6 +71,9 @@
 			button.close-button(@click="$refs.detailsModal?.close()") ✕
 			template(v-if="modalContent && modalContent.contentType === 'session'")
 				h3 {{ modalContent.contentObject.title }}
+					.button-container(:class="favs.includes(modalContent.contentObject.id) ? 'faved' : ''")
+						fav-button(@toggleFav="favs.includes(modalContent.contentObject.id) ? unfav(modalContent.contentObject.id) : fav(modalContent.contentObject.id)")
+
 				.card-content
 					.facts
 						.time
@@ -130,6 +133,7 @@ import { DateTime, Settings } from 'luxon'
 import MarkdownIt from 'markdown-it'
 import LinearSchedule from '~/components/LinearSchedule'
 import GridScheduleWrapper from '~/components/GridScheduleWrapper'
+import FavButton from '~/components/FavButton'
 import Session from '~/components/Session'
 import { findScrollParent, getLocalizedString, getSessionTime } from '~/utils'
 
@@ -140,7 +144,7 @@ const markdownIt = MarkdownIt({
 
 export default {
 	name: 'PretalxSchedule',
-	components: { LinearSchedule, GridScheduleWrapper, Session },
+	components: { FavButton, LinearSchedule, GridScheduleWrapper, Session },
 	props: {
 		eventUrl: String,
 		locale: String,
@@ -742,6 +746,8 @@ export default {
 
 	h3
 		margin: 8px 0
+		display: flex
+		align-items: center
 
 	.ampm
 		margin-left: 4px
