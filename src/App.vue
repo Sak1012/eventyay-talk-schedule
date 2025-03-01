@@ -83,8 +83,8 @@
 						template(v-if="modalContent.contentObject.isLoading")
 							bunt-progress-circular(size="big", :page="true")
 						template(v-else)
-							hr(v-if="modalContent.contentObject.abstract?.length && modalContent.contentObject.apiContent?.description?.length")
-							.description(v-if="modalContent.contentObject.apiContent?.description", v-html="markdownIt.render(modalContent.contentObject.apiContent.description)")
+							hr(v-if="(modalContent.contentObject.abstract?.length > 0) && (modalContent.contentObject.apiContent?.description?.length > 0)")
+							.description(v-if="modalContent.contentObject.apiContent?.description?.length > 0", v-html="markdownIt.render(modalContent.contentObject.apiContent.description)")
 				.speakers(v-if="modalContent.contentObject.speakers")
 					a.speaker.inner-card(v-for="speaker in modalContent.contentObject.speakers", @click="showSpeakerDetails(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
 						.img-wrapper
@@ -101,7 +101,7 @@
 							template(v-if="modalContent.contentObject.isLoading")
 								bunt-progress-circular(size="big", :page="true")
 							template(v-else)
-								.biography(v-if="modalContent.contentObject.apiContent?.biography", v-html="markdownIt.render(modalContent.contentObject.apiContent.biography)")
+								.biography(v-if="modalContent.contentObject.apiContent?.biography?.length > 0", v-html="markdownIt.render(modalContent.contentObject.apiContent.biography)")
 						.img-wrapper
 							img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
 							.avatar-placeholder(v-else)
@@ -521,6 +521,7 @@ export default {
 				contentType: 'session',
 				contentObject: {
 					...session,
+					apiContent: talk.apiContent,
 					isLoading: !talk.apiContent
 				}
 			}
