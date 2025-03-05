@@ -139,7 +139,7 @@ import Session from '~/components/Session'
 import { findScrollParent, getLocalizedString, getSessionTime } from '~/utils'
 
 const markdownIt = MarkdownIt({
-	linkify: true,
+	linkify: false,
 	breaks: true
 })
 
