@@ -96,7 +96,9 @@
 							.avatar-placeholder(v-else)
 								svg(viewBox="0 0 24 24")
 									path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
-						.inner-card-content {{ speaker.name }}
+						.inner-card-content
+							span {{ speaker.name }}
+							p.biography(v-if="speaker.apiContent?.biography?.length > 0", v-html="markdownIt.render(speaker.apiContent.biography)")
 			template(v-if="modalContent && modalContent.contentType === 'speaker'")
 				.speaker-details
 					h3 {{ modalContent.contentObject.name }}
@@ -472,11 +474,35 @@ export default {
 			}
 			if (!this.favs.length) this.onlyFavs = false
 		},
+		async fetchSpeakerApiContentIfNeeded (speakerCode) {
+			const speakerObj = this.speakersLookup[speakerCode]
+			if (!speakerObj) {
+				console.warn(`Speaker with code ${speakerCode} not found in speakersLookup.`)
+				return
+			}
+
+			if (speakerObj.apiContent || speakerObj.isLoadingApiContent) {
+				return // Already fetched or currently fetching
+			}
+
+			speakerObj.isLoadingApiContent = true
+			try {
+				const apiData = await this.remoteApiRequest(`speakers/${speakerCode}/`, 'GET')
+				speakerObj.apiContent = apiData
+			} catch (e) {
+				console.error(`Failed to fetch API content for speaker ${speakerCode}:`, e)
+				// Potentially set an error flag on speakerObj if needed for UI
+			} finally {
+				speakerObj.isLoadingApiContent = false
+			}
+		},
 		async showSpeakerDetails(speaker, ev) {
 			ev.preventDefault()
-
-			// Find speaker in schedule data
-			const speakerObj = this.schedule.speakers.find(s => s.code === speaker.code)
+			const speakerObj = this.speakersLookup[speaker.code];
+			if (!speakerObj) {
+				console.warn(`Speaker ${speaker.code} not found for details view.`);
+				return;
+			}
 
 			const speakerSessions = this.sessions.filter(session =>
 				session.speakers?.some(s => s.code === speaker.code)
@@ -493,24 +519,21 @@ export default {
 			}
 			this.$refs.detailsModal?.showModal()
 
-			// Fetch additional data if needed
-			if (!speakerObj.apiContent) {
-				try {
-					speakerObj.apiContent = await this.remoteApiRequest(`speakers/${speaker.code}/`, 'GET')
-					// Update modalContent if we are still on the same speaker
-					if (this.modalContent.contentObject.code === speaker.code) {
-						this.modalContent = {
-							contentType: 'speaker',
-							contentObject: {
-								...speakerObj,
-								sessions: speakerSessions,
-								isLoading: false
-							}
-						}
+			// Attempt to fetch/refresh speaker's apiContent.
+			// The helper method handles "already fetched" or "currently fetching" internally.
+			await this.fetchSpeakerApiContentIfNeeded(speaker.code)
+
+			// After the fetch attempt, speakerObj in speakersLookup might have been updated.
+			// Re-set modalContent to reflect the latest state and turn off modal's isLoading.
+			if (this.modalContent && this.modalContent.contentType === 'speaker' && this.modalContent.contentObject.code === speaker.code) {
+				this.modalContent = {
+					contentType: 'speaker',
+					contentObject: {
+						...this.speakersLookup[speaker.code], // Use the potentially updated speakerObj
+						sessions: speakerSessions,
+						isLoading: false // Fetch attempt is done, modal's own spinner can be turned off.
+										 // Content visibility (biography) depends on speakerObj.apiContent.
 					}
-				} catch (e) {
-					console.error('Failed to fetch speaker details:', e)
-					this.modalContent.contentObject.isLoading = false
 				}
 			}
 		},
@@ -534,9 +557,13 @@ export default {
 			// Fetch additional data if needed
 			if (!talk.apiContent) {
 				try {
+					// Ensure isLoading is true for the session description part
+					if (this.modalContent && this.modalContent.contentType === 'session' && this.modalContent.contentObject.id === session.id) {
+						this.modalContent.contentObject.isLoading = true;
+					}
 					talk.apiContent = await this.remoteApiRequest(`submissions/${session.id}/`, 'GET')
 					// Update content with fetched description if we are still on the same session
-					if (this.modalContent.contentObject.id === session.id) {
+					if (this.modalContent && this.modalContent.contentType === 'session' && this.modalContent.contentObject.id === session.id) {
 						this.modalContent = {
 							contentType: 'session',
 							contentObject: {
@@ -548,8 +575,20 @@ export default {
 					}
 				} catch (e) {
 					console.error('Failed to fetch session details:', e)
-					this.modalContent.contentObject.isLoading = false
+					if (this.modalContent && this.modalContent.contentType === 'session' && this.modalContent.contentObject.id === session.id) {
+						this.modalContent.contentObject.isLoading = false
+					}
 				}
+			}
+
+			// Asynchronously fetch speaker biographies for all speakers in this session
+			if (session.speakers && session.speakers.length > 0) {
+				const speakerFetchPromises = session.speakers.map(spk =>
+					this.fetchSpeakerApiContentIfNeeded(spk.code)
+				);
+				// We don't need to await these here; they will update speaker objects reactively.
+				// Errors are logged by the helper.
+				Promise.allSettled(speakerFetchPromises);
 			}
 		},
 		resetFilteredTracks () {
@@ -577,6 +616,7 @@ export default {
 	min-height: 0
 	height: 100%
 	font-size: 14px
+	--pretalx-clr-text: rgb(13,15,16)
 	&.grid-schedule
 		min-width: min-content
 		max-width: var(--schedule-max-width)
@@ -773,6 +813,8 @@ export default {
 		.inner-card-content
 			margin-top: 8px
 			margin-left: 8px
+			p
+				color: var(--pretalx-clr-text)
 
 	.img-wrapper
 		padding: 4px 16px 4px 4px
