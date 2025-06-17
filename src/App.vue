@@ -4,25 +4,19 @@
 		.schedule-error
 			.error-message An error occurred while loading the schedule. Please try again later.
 	template(v-else-if="schedule && sessions.length")
-		.settings
-			bunt-button.filter-tracks(v-if="this.schedule.tracks.length", @click="$refs.filterModal?.showModal()")
-				svg#filter(viewBox="0 0 752 752")
-					path(d="m401.57 264.71h-174.75c-6.6289 0-11.84 5.2109-11.84 11.84 0 6.6289 5.2109 11.84 11.84 11.84h174.75c5.2109 17.523 21.312 30.309 40.727 30.309 18.941 0 35.52-12.785 40.254-30.309h43.098c6.6289 0 11.84-5.2109 11.84-11.84 0-6.6289-5.2109-11.84-11.84-11.84h-43.098c-5.2109-17.523-21.312-30.309-40.254-30.309-19.414 0-35.516 12.785-40.727 30.309zm58.723 11.84c0 10.418-8.5234 18.469-18.469 18.469s-18.469-8.0508-18.469-18.469 8.5234-18.469 18.469-18.469c9.4727-0.003906 18.469 8.0469 18.469 18.469z")
-					path(d="m259.5 359.43h-32.676c-6.6289 0-11.84 5.2109-11.84 11.84s5.2109 11.84 11.84 11.84h32.676c5.2109 17.523 21.312 30.309 40.727 30.309 18.941 0 35.52-12.785 40.254-30.309h185.17c6.6289 0 11.84-5.2109 11.84-11.84s-5.2109-11.84-11.84-11.84h-185.17c-5.2109-17.523-21.312-30.309-40.254-30.309-19.418 0-35.52 12.785-40.73 30.309zm58.723 11.84c0 10.418-8.5234 18.469-18.469 18.469-9.9453 0-18.469-8.0508-18.469-18.469s8.5234-18.469 18.469-18.469c9.9453 0 18.469 8.0508 18.469 18.469z")
-					path(d="m344.75 463.61h-117.92c-6.6289 0-11.84 5.2109-11.84 11.84s5.2109 11.84 11.84 11.84h117.92c5.2109 17.523 21.312 30.309 40.727 30.309 18.941 0 35.52-12.785 40.254-30.309h99.926c6.6289 0 11.84-5.2109 11.84-11.84s-5.2109-11.84-11.84-11.84h-99.926c-5.2109-17.523-21.312-30.309-40.254-30.309-19.418 0-35.52 12.785-40.727 30.309zm58.723 11.84c0 10.418-8.5234 18.469-18.469 18.469s-18.469-8.0508-18.469-18.469 8.5234-18.469 18.469-18.469 18.469 8.0508 18.469 18.469z")
-				| Filter
-				template(v-if="filteredTracks.length") ({{ filteredTracks.length }})
-			bunt-button.fav-toggle(v-if="favs.length", @click="onlyFavs = !onlyFavs; if (onlyFavs) resetFilteredTracks()", :class="onlyFavs ? ['active'] : []")
-				svg#star(viewBox="0 0 24 24")
-					polygon(
-						:style="{fill: '#FFA000', stroke: '#FFA000'}"
-						points="14.43,10 12,2 9.57,10 2,10 8.18,14.41 5.83,22 12,17.31 18.18,22 15.83,14.41 22,10"
-					)
-				| {{ favs.length }}
-			template(v-if="!inEventTimezone")
-				bunt-select.timezone-item(name="timezone", :options="[{id: schedule.timezone, label: schedule.timezone}, {id: userTimezone, label: userTimezone}]", v-model="currentTimezone", @blur="saveTimezone")
-			template(v-else)
-				div.timezone-label.timezone-item.bunt-tab-header-item {{ schedule.timezone }}
+		schedule-settings(
+			:tracks="schedule.tracks",
+			:filteredTracksCount="filteredTracks.length",
+			:favsCount="favs.length",
+			:onlyFavs="onlyFavs",
+			:inEventTimezone="inEventTimezone",
+			v-model:currentTimezone="currentTimezone",
+			:scheduleTimezone="schedule.timezone",
+			:userTimezone="userTimezone",
+			@openFilter="$refs.filterModal?.showModal()",
+			@toggleFavs="onlyFavs = !onlyFavs; if (onlyFavs) resetFilteredTracks()",
+			@saveTimezone="saveTimezone"
+		)
 		bunt-tabs.days(v-if="days && days.length > 1", v-model="currentDay", ref="tabs" :class="showGrid? ['grid-tabs'] : ['list-tabs']")
 			bunt-tab(v-for="day in days", :id="day.toISODate()", :header="day.toLocaleString(dateFormat)", @selected="changeDay(day)")
 		grid-schedule-wrapper(v-if="showGrid",
@@ -60,73 +54,24 @@
 			.btn.btn-danger(@click="errorMessages = errorMessages.filter(m => m !== message)") x
 			div.message {{ message }}
 	#bunt-teleport-target(ref="teleportTarget")
-	dialog.pretalx-modal#filter-modal(ref="filterModal", @click.stop="$refs.filterModal?.close()")
-		.dialog-inner(@click.stop="", v-if="schedule && sessions.length")
-			button.close-button(@click="$refs.detailsModal?.close()") ✕
-			h3 Tracks
-			.checkbox-line(v-for="track in allTracks", :key="track.value", :style="{'--track-color': track.color}")
-				bunt-checkbox(type="checkbox", :label="track.label", :name="track.value + track.label", v-model="track.selected", :value="track.value", @input="onlyFavs = false")
-				.track-description(v-if="getLocalizedString(track.description).length") {{ getLocalizedString(track.description) }}
-	dialog.pretalx-modal#session-modal(ref="detailsModal", @click.stop="$refs.detailsModal?.close()")
-		.dialog-inner(@click.stop="")
-			button.close-button(@click="$refs.detailsModal?.close()") ✕
-			template(v-if="modalContent && modalContent.contentType === 'session'")
-				h3 {{ modalContent.contentObject.title }}
-					.button-container(:class="favs.includes(modalContent.contentObject.id) ? 'faved' : ''")
-						fav-button(@toggleFav="favs.includes(modalContent.contentObject.id) ? unfav(modalContent.contentObject.id) : fav(modalContent.contentObject.id)")
-
-				.card-content
-					.facts
-						.time
-							span {{ modalContent.contentObject.start.toLocaleString({ weekday: 'long', day: 'numeric', month: 'long' }) }}, {{ getSessionTime(modalContent.contentObject, currentTimezone, locale, hasAmPm).time }}
-							span.ampm(v-if="getSessionTime(modalContent.contentObject, currentTimezone, locale, hasAmPm).ampm") {{ getSessionTime(modalContent.contentObject, currentTimezone, locale, hasAmPm).ampm }}
-						.room(v-if="modalContent.contentObject.room") {{ getLocalizedString(modalContent.contentObject.room.name) }}
-						.track(v-if="modalContent.contentObject.track", :style="{ color: modalContent.contentObject.track.color }") {{ getLocalizedString(modalContent.contentObject.track.name) }}
-					.text-content
-						.abstract(v-if="modalContent.contentObject.abstract", v-html="markdownIt.render(modalContent.contentObject.abstract)")
-						template(v-if="modalContent.contentObject.isLoading")
-							bunt-progress-circular(size="big", :page="true")
-						template(v-else)
-							hr(v-if="(modalContent.contentObject.abstract?.length > 0) && (modalContent.contentObject.apiContent?.description?.length > 0)")
-							.description(v-if="modalContent.contentObject.apiContent?.description?.length > 0", v-html="markdownIt.render(modalContent.contentObject.apiContent.description)")
-				.speakers(v-if="modalContent.contentObject.speakers")
-					a.speaker.inner-card(v-for="speaker in modalContent.contentObject.speakers", @click="showSpeakerDetails(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
-						.img-wrapper
-							img(v-if="speaker.avatar", :src="speaker.avatar", :alt="speaker.name")
-							.avatar-placeholder(v-else)
-								svg(viewBox="0 0 24 24")
-									path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
-						.inner-card-content
-							span {{ speaker.name }}
-							p.biography(v-if="speaker.apiContent?.biography?.length > 0", v-html="markdownIt.render(speaker.apiContent.biography)")
-			template(v-if="modalContent && modalContent.contentType === 'speaker'")
-				.speaker-details
-					h3 {{ modalContent.contentObject.name }}
-					.speaker-content.card-content
-						.text-content
-							template(v-if="modalContent.contentObject.isLoading")
-								bunt-progress-circular(size="big", :page="true")
-							template(v-else)
-								.biography(v-if="modalContent.contentObject.apiContent?.biography?.length > 0", v-html="markdownIt.render(modalContent.contentObject.apiContent.biography)")
-						.img-wrapper
-							img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
-							.avatar-placeholder(v-else)
-								svg(viewBox="0 0 24 24")
-									path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
-				.speaker-sessions
-					session(
-						v-for="session in modalContent.contentObject.sessions",
-						:session="session",
-						:showDate="true",
-						:now="now",
-						:timezone="currentTimezone",
-						:locale="locale",
-						:hasAmPm="hasAmPm",
-						:faved="favs.includes(session.id)",
-						:onHomeServer="onHomeServer",
-						@fav="fav(session.id)",
-						@unfav="unfav(session.id)",
-					)
+	filter-modal(
+		ref="filterModal",
+		:tracks="allTracks",
+		@trackToggled="onlyFavs = false"
+	)
+	session-modal(
+		ref="sessionModal",
+		:modalContent="modalContent",
+		:currentTimezone="currentTimezone",
+		:locale="locale",
+		:hasAmPm="hasAmPm",
+		:now="now",
+		:onHomeServer="onHomeServer",
+		@toggleFav="favs.includes(modalContent?.contentObject.id) ? unfav(modalContent.contentObject.id) : fav(modalContent.contentObject.id)",
+		@showSpeaker="showSpeakerDetails($event, arguments[1])",
+		@fav="fav($event)",
+		@unfav="unfav($event)"
+	)
 	a(href="https://pretalx.com", target="_blank", v-if="!onHomeServer").powered-by powered by
 		span.pretalx(href="https://pretalx.com", target="_blank") pretalx
 </template>
@@ -138,6 +83,9 @@ import LinearSchedule from '~/components/LinearSchedule'
 import GridScheduleWrapper from '~/components/GridScheduleWrapper'
 import FavButton from '~/components/FavButton'
 import Session from '~/components/Session'
+import ScheduleSettings from '~/components/ScheduleSettings'
+import SessionModal from '~/components/SessionModal'
+import FilterModal from '~/components/FilterModal'
 import { findScrollParent, getLocalizedString, getSessionTime } from '~/utils'
 
 const markdownIt = MarkdownIt({
@@ -147,7 +95,7 @@ const markdownIt = MarkdownIt({
 
 export default {
 	name: 'PretalxSchedule',
-	components: { FavButton, LinearSchedule, GridScheduleWrapper, Session },
+	components: { FavButton, LinearSchedule, GridScheduleWrapper, Session, ScheduleSettings, SessionModal, FilterModal },
 	props: {
 		eventUrl: String,
 		locale: String,
@@ -513,11 +461,11 @@ export default {
 				contentType: 'speaker',
 				contentObject: {
 					...speakerObj,
-					sessions: speakerSessions,
+					sessions: speakerSessions.map(s => ({...s, faved: this.favs.includes(s.id)})),
 					isLoading: !speakerObj.apiContent
 				}
 			}
-			this.$refs.detailsModal?.showModal()
+			this.$refs.sessionModal?.showModal()
 
 			// Attempt to fetch/refresh speaker's apiContent.
 			// The helper method handles "already fetched" or "currently fetching" internally.
@@ -530,7 +478,7 @@ export default {
 					contentType: 'speaker',
 					contentObject: {
 						...this.speakersLookup[speaker.code], // Use the potentially updated speakerObj
-						sessions: speakerSessions,
+						sessions: speakerSessions.map(s => ({...s, faved: this.favs.includes(s.id)})),
 						isLoading: false // Fetch attempt is done, modal's own spinner can be turned off.
 										 // Content visibility (biography) depends on speakerObj.apiContent.
 					}
@@ -549,10 +497,11 @@ export default {
 				contentObject: {
 					...session,
 					apiContent: talk.apiContent,
-					isLoading: !talk.apiContent
+					isLoading: !talk.apiContent,
+					faved: this.favs.includes(session.id)
 				}
 			}
-			this.$refs.detailsModal?.showModal()
+			this.$refs.sessionModal?.showModal()
 
 			// Fetch additional data if needed
 			if (!talk.apiContent) {
@@ -569,7 +518,8 @@ export default {
 							contentObject: {
 								...session,
 								apiContent: talk.apiContent,
-								isLoading: false
+								isLoading: false,
+								faved: this.favs.includes(session.id)
 							}
 						}
 					}
@@ -623,43 +573,6 @@ export default {
 		margin: 0 auto
 	&.list-schedule
 		min-width: 0
-	.settings
-		align-self: flex-start
-		display: flex
-		align-items: center
-		z-index: 100
-		width: min(calc(100% - 36px), var(--schedule-max-width))
-		.fav-toggle
-			margin-right: 8px
-			display: flex
-			&.active
-				border: #FFA000 2px solid
-			.bunt-button-text
-				display: flex
-				align-items: center
-			svg
-				width: 20px
-				height: 20px
-				margin-right: 6px
-		.filter-tracks
-			margin: 0 8px
-			display: flex
-			.bunt-button-text
-				display: flex
-				align-items: center
-				padding-right: 8px
-			svg
-				width: 36px
-				height: 36px
-				margin-right: 6px
-		.bunt-select
-			max-width: 300px
-			padding-right: 8px
-		.timezone-label
-			cursor: default
-			color: $clr-secondary-text-light
-		.timezone-item
-			margin-left: auto
 	.days
 		background-color: $clr-white
 		tabs-style(active-color: var(--pretalx-clr-primary), indicator-color: var(--pretalx-clr-primary), background-color: transparent)
@@ -727,136 +640,4 @@ export default {
 	&:hover .pretalx
 		color: #3aa57c
 
-.pretalx-modal
-	padding: 0
-	border-radius: 8px
-	border: 0
-	box-shadow: 0 -2px 4px rgba(0,0,0,0.06),
-		0 1px 3px rgba(0,0,0,0.12),
-		0 8px 24px rgba(0,0,0,0.15),
-		0 16px 32px rgba(0,0,0,0.09)
-	width: calc(100vw - 32px)
-	max-width: 848px
-	max-height: calc(100vh - 64px)
-	overflow-y: auto
-	font-size: 16px
-
-	.dialog-inner
-		padding: 16px 24px
-		margin: 0
-
-	.close-button
-		position: absolute
-		top: 0
-		right: 4px
-		background: none
-		border: none
-		cursor: pointer
-		padding: 8px
-		color: $clr-grey-600
-		font-size: 22px
-		font-weight: bold
-		&:hover
-			color: $clr-grey-900
-
-	h3
-		margin: 8px 0
-		display: flex
-		align-items: center
-
-	.ampm
-		margin-left: 4px
-
-	.facts
-		display: flex
-		flex-wrap: wrap
-		color: $clr-grey-600
-		margin-bottom: 8px
-		border-bottom: 1px solid $clr-grey-300
-		&>*
-			margin-right: 4px
-			margin-bottom: 8px
-			&:not(:last-child):after
-				content: ','
-
-	.card-content
-			display: flex
-			flex-direction: column
-
-	.text-content
-			margin-bottom: 8px
-			.abstract
-				font-weight: bold
-			p
-				font-size: 16px
-			hr
-				color: #ced4da
-				height: 0
-				border: 0
-				border-top: 1px solid #e0e0e0
-				margin: 16px 0
-
-	.inner-card
-		display: flex
-		margin-bottom: 12px
-		cursor: pointer
-		border-radius: 6px
-		padding: 12px
-		border-radius: 6px
-		border: 1px solid #ced4da
-		min-height: 96px
-		align-items: flex-start
-		padding: 8px
-		text-decoration: none
-		color: var(--pretalx-clr-primary)
-
-		.inner-card-content
-			margin-top: 8px
-			margin-left: 8px
-			p
-				color: var(--pretalx-clr-text)
-				font-size: 14px
-
-	.img-wrapper
-		padding: 4px 16px 4px 4px
-		width: 100px
-		height: 100px
-		img, .avatar-placeholder
-			width: 100px
-			height: 100px
-			border-radius: 50%
-		img
-			object-fit: cover
-		.avatar-placeholder
-			background: rgba(0,0,0,0.1)
-			display: flex
-			align-items: center
-			justify-content: center
-			svg
-				width: 60%
-				height: 60%
-				color: rgba(0,0,0,0.3)
-
-	.speaker-details
-		h3
-			margin-bottom: 0
-		.speaker-content
-			display: flex
-			flex-direction: row
-			align-items: flex-start
-			justify-content: space-between
-			margin-bottom: 16px
-
-			.biography
-					margin-top: 8px
-
-#filter-modal
-	.checkbox-line
-		margin: 16px 8px
-		.bunt-checkbox.checked .bunt-checkbox-box
-			background-color: var(--track-color)
-			border-color: var(--track-color)
-		.track-description
-			color: $clr-grey-600
-			margin-left: 32px
 </style>
