@@ -252,22 +252,17 @@ export default {
 			padding: 6px 6px 6px 0
 		.btn-fav-container
 			margin-top: 2px
-			display: none
+			display: inline-flex
 			icon-button-style(style: clear)
 			padding: 2px
 			width: 32px
 			height: 32px
-	&.faved
-		.btn-fav-container
-			display: inline-flex
 	&:hover
 		.info
 			border: 1px solid var(--track-color)
 			border-left: none
 			.title
 				color: var(--pretalx-clr-primary)
-		.btn-fav-container
-			display: inline-flex
 @media(hover: none)
 	.c-linear-schedule-session .session-icons .btn-fav-container
 		display: inline-flex
