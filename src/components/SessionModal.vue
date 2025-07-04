@@ -220,6 +220,35 @@ export default {
 				color: var(--pretalx-clr-text)
 				font-size: 14px
 
+		.img-wrapper
+			width: 100px
+			height: 100px
+			img, .avatar-placeholder
+				width: 100px
+				height: 100px
+
+	.img-wrapper
+		padding: 4px 16px 4px 4px
+		width: 140px
+		height: 140px
+		img, .avatar-placeholder
+			width: 140px
+			height: 140px
+			border-radius: 50%
+			box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px 0px, rgba(0, 0, 0, 0.24) 0px 1px 2px 0px
+
+		img
+			object-fit: cover
+
+		.avatar-placeholder
+			background: rgba(0,0,0,0.1)
+			display: flex
+			align-items: center
+			justify-content: center
+			svg
+				width: 60%
+				height: 60%
+				color: rgba(0,0,0,0.3)
 
 	.speaker-details
 		h3
@@ -235,32 +264,12 @@ export default {
 					margin-top: 8px
 
 		.speaker-avatar-container
-			.img-wrapper
-				padding: 4px 16px 4px 4px
-				width: 140px
-				height: 140px
-				img, .avatar-placeholder
-					width: 140px
-					height: 140px
-					border-radius: 50%
-					box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px 0px, rgba(0, 0, 0, 0.24) 0px 1px 2px 0px
-				img
-					object-fit: cover
-				.avatar-placeholder
-					background: rgba(0,0,0,0.1)
-					display: flex
-					align-items: center
-					justify-content: center
-					svg
-						width: 60%
-						height: 60%
-						color: rgba(0,0,0,0.3)
-
 			&.outline-container
 				border: 1px solid var(--pretalx-clr-primary)
 				box-shadow: rgba(0, 0, 0, 0.24) 0px 1px 2px 0px
 				border-radius: 6px
 				padding: 12px
+				margin-right: 8px
 				display: flex
 				flex-direction: column
 				align-items: center
