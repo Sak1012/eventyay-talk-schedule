@@ -40,11 +40,28 @@ dialog.pretalx-modal#session-modal(ref="modal", @click.stop="close()")
 							bunt-progress-circular(size="big", :page="true")
 						template(v-else)
 							.biography(v-if="modalContent.contentObject.apiContent?.biography?.length > 0", v-html="markdownIt.render(modalContent.contentObject.apiContent.biography)")
-					.img-wrapper
-						img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
-						.avatar-placeholder(v-else)
-							svg(viewBox="0 0 24 24")
-								path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
+					.speaker-avatar-container(:class="{ 'outline-container': shortAnswers.length > 0 }")
+						.img-wrapper
+							img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
+							.avatar-placeholder(v-else)
+								svg(viewBox="0 0 24 24")
+									path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
+						.answers(v-if="shortAnswers.length > 0")
+							hr
+							.inline-answer(v-for="answer in shortAnswers", :key="answer.id")
+								span.question
+									strong {{ getLocalizedString(answer.question.question) }}:
+								span.answer
+									template(v-if="answer.question.variant === 'file'")
+										i.fa.fa-file-o
+										a(v-if="answer.answer_file", :href="answer.answer_file.url") {{ answer.answer_file }}
+										span(v-else) No file provided
+									template(v-else-if="answer.question.variant === 'boolean'")
+										span {{ answer.answer ? 'Yes' : 'No' }}
+									template(v-else-if="answer.answer")
+										span(v-html="markdownIt.render(answer.answer)")
+									template(v-else)
+										span No response
 			.speaker-sessions
 				session(
 					v-for="session in modalContent.contentObject.sessions",
@@ -89,6 +106,13 @@ export default {
 			markdownIt,
 			getLocalizedString,
 			getSessionTime
+		}
+	},
+	computed: {
+		shortAnswers () {
+			const apiContent = this.modalContent.contentObject.apiContent
+			if (!apiContent || !apiContent.answers || !apiContent.answers.length) return []
+			return apiContent.answers.filter((answer) => answer.question.variant !== 'text')
 		}
 	},
 	methods: {
@@ -196,25 +220,6 @@ export default {
 				color: var(--pretalx-clr-text)
 				font-size: 14px
 
-	.img-wrapper
-		padding: 4px 16px 4px 4px
-		width: 100px
-		height: 100px
-		img, .avatar-placeholder
-			width: 100px
-			height: 100px
-			border-radius: 50%
-		img
-			object-fit: cover
-		.avatar-placeholder
-			background: rgba(0,0,0,0.1)
-			display: flex
-			align-items: center
-			justify-content: center
-			svg
-				width: 60%
-				height: 60%
-				color: rgba(0,0,0,0.3)
 
 	.speaker-details
 		h3
@@ -228,4 +233,73 @@ export default {
 
 			.biography
 					margin-top: 8px
+
+		.speaker-avatar-container
+			.img-wrapper
+				padding: 4px 16px 4px 4px
+				width: 140px
+				height: 140px
+				img, .avatar-placeholder
+					width: 140px
+					height: 140px
+					border-radius: 50%
+					box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px 0px, rgba(0, 0, 0, 0.24) 0px 1px 2px 0px
+				img
+					object-fit: cover
+				.avatar-placeholder
+					background: rgba(0,0,0,0.1)
+					display: flex
+					align-items: center
+					justify-content: center
+					svg
+						width: 60%
+						height: 60%
+						color: rgba(0,0,0,0.3)
+
+			&.outline-container
+				border: 1px solid var(--pretalx-clr-primary)
+				box-shadow: rgba(0, 0, 0, 0.24) 0px 1px 2px 0px
+				border-radius: 6px
+				padding: 12px
+				display: flex
+				flex-direction: column
+				align-items: center
+
+				.img-wrapper
+					padding: 0 0 8px 0
+
+			.answers
+				hr
+					color: #ced4da
+					height: 0
+					border: 0
+					border-top: 1px solid #e0e0e0
+					margin: 8px 0
+
+				.inline-answer
+					margin-top: 8px
+					display: flex
+					flex-wrap: wrap
+					align-items: baseline
+					gap: 4px
+
+					.question
+						color: var(--pretalx-clr-text)
+						strong
+							font-weight: 600
+
+					.answer
+						color: var(--pretalx-clr-text)
+
+						p
+							margin: 0
+
+						.fa
+							margin-right: 4px
+
+						a
+							color: var(--pretalx-clr-primary)
+							text-decoration: none
+							&:hover
+								text-decoration: underline
 </style>

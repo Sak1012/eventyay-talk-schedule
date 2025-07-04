@@ -436,7 +436,7 @@ export default {
 
 			speakerObj.isLoadingApiContent = true
 			try {
-				const apiData = await this.remoteApiRequest(`speakers/${speakerCode}/`, 'GET')
+				const apiData = await this.remoteApiRequest(`speakers/${speakerCode}/?expand=answers.question`, 'GET')
 				speakerObj.apiContent = apiData
 			} catch (e) {
 				console.error(`Failed to fetch API content for speaker ${speakerCode}:`, e)
