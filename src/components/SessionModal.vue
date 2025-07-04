@@ -287,13 +287,10 @@ export default {
 
 				.inline-answer
 					margin-top: 8px
-					display: flex
-					flex-wrap: wrap
-					align-items: baseline
-					gap: 4px
 
 					.question
 						color: var(--pretalx-clr-text)
+						margin-right: 4px;
 						strong
 							font-weight: 600
 
@@ -302,6 +299,7 @@ export default {
 
 						p
 							margin: 0
+							display: inline
 
 						.fa
 							margin-right: 4px
