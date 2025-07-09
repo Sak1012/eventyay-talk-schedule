@@ -21,6 +21,24 @@ dialog.pretalx-modal#session-modal(ref="modal", @click.stop="close()")
 					template(v-else)
 						hr(v-if="(modalContent.contentObject.abstract?.length > 0) && (modalContent.contentObject.apiContent?.description?.length > 0)")
 						.description(v-if="modalContent.contentObject.apiContent?.description?.length > 0", v-html="markdownIt.render(modalContent.contentObject.apiContent.description)")
+						template(v-if="shortAnswers.length > 0 || iconAnswers.length > 0")
+							hr
+							.answers
+								.icon-group(v-if="iconAnswers.length > 0")
+									.icon-link(v-for="answer in iconAnswers", :key="answer.id")
+										a(:href="answer.answer", target="_blank", rel="noopener noreferrer")
+											img(v-if="answer.question.icon && remoteApiUrl", :src="`${remoteApiUrl}questions/${answer.question.id}/icon/`", :alt="getLocalizedString(answer.question.question)", width="16", height="16")
+											span(v-else) {{ getLocalizedString(answer.question.question) }}
+								.inline-answer(v-for="answer in shortAnswers", :key="answer.id")
+									span.question
+										strong {{ getLocalizedString(answer.question.question) }}:
+									span.answer(v-if="answer.question.variant === 'file'")
+										i.fa.fa-file-o
+										a(v-if="answer.answer_file", :href="answer.answer_file.url") {{ answer.answer_file }}
+										span(v-else) No file provided
+									span.answer(v-else-if="answer.question.variant === 'boolean'") {{ answer.answer ? 'Yes' : 'No' }}
+									span.answer(v-else-if="answer.answer", v-html="markdownIt.render(answer.answer)")
+									span.answer(v-else) No response
 			.speakers(v-if="modalContent.contentObject.speakers")
 				a.speaker.inner-card(v-for="speaker in modalContent.contentObject.speakers", @click="handleSpeakerClick(speaker, $event)", :href="`#speaker/${speaker.code}`", :key="speaker.code")
 					.img-wrapper
@@ -40,14 +58,19 @@ dialog.pretalx-modal#session-modal(ref="modal", @click.stop="close()")
 							bunt-progress-circular(size="big", :page="true")
 						template(v-else)
 							.biography(v-if="modalContent.contentObject.apiContent?.biography?.length > 0", v-html="markdownIt.render(modalContent.contentObject.apiContent.biography)")
-					.speaker-avatar-container(:class="{ 'outline-container': shortAnswers.length > 0 }")
+					.speaker-avatar-container(:class="{ 'outline-container': shortAnswers.length > 0 || iconAnswers.length > 0 }")
 						.img-wrapper
 							img(v-if="modalContent.contentObject.avatar", :src="modalContent.contentObject.avatar", :alt="modalContent.contentObject.name")
 							.avatar-placeholder(v-else)
 								svg(viewBox="0 0 24 24")
 									path(fill="currentColor", d="M12,1A5.8,5.8 0 0,1 17.8,6.8A5.8,5.8 0 0,1 12,12.6A5.8,5.8 0 0,1 6.2,6.8A5.8,5.8 0 0,1 12,1M12,15C18.63,15 24,17.67 24,21V23H0V21C0,17.67 5.37,15 12,15Z")
-						.answers(v-if="shortAnswers.length > 0")
+						.answers(v-if="shortAnswers.length > 0 || iconAnswers.length > 0")
 							hr
+							.icon-group(v-if="iconAnswers.length > 0")
+								.icon-link(v-for="answer in iconAnswers", :key="answer.id")
+									a(:href="answer.answer", target="_blank", rel="noopener noreferrer")
+										img(v-if="answer.question.icon && remoteApiUrl", :src="`${remoteApiUrl}questions/${answer.question.id}/icon/`", :alt="getLocalizedString(answer.question.question)", width="16", height="16")
+										span(v-else) {{ getLocalizedString(answer.question.question) }}
 							.inline-answer(v-for="answer in shortAnswers", :key="answer.id")
 								template(v-if="answer.question.variant === 'url' && answer.answer")
 									strong.question
@@ -92,6 +115,9 @@ const markdownIt = MarkdownIt({
 export default {
 	name: 'SessionModal',
 	components: { FavButton, Session },
+	inject: {
+		remoteApiUrl: { default: '' }
+	},
 	props: {
 		modalContent: Object,
 		currentTimezone: String,
@@ -112,7 +138,15 @@ export default {
 		shortAnswers () {
 			const apiContent = this.modalContent.contentObject.apiContent
 			if (!apiContent || !apiContent.answers || !apiContent.answers.length) return []
-			return apiContent.answers.filter((answer) => answer.question.variant !== 'text')
+			return apiContent.answers.filter((answer) => {
+				// Exclude text answers and URL answers with icons (those go to iconAnswers)
+				return answer.question.variant !== 'text' && !(answer.question.variant === 'url' && answer.question.icon)
+			})
+		},
+		iconAnswers () {
+			const apiContent = this.modalContent.contentObject.apiContent
+			if (!apiContent || !apiContent.answers || !apiContent.answers.length) return []
+			return apiContent.answers.filter((answer) => answer.question.variant === 'url' && answer.question.icon)
 		}
 	},
 	methods: {
@@ -199,6 +233,58 @@ export default {
 				border-top: 1px solid #e0e0e0
 				margin: 16px 0
 
+	.answers
+		.icon-group
+			display: flex
+			flex-wrap: wrap
+			gap: 8px
+			margin-top: 2px
+			margin-bottom: 0
+
+			.icon-link
+				display: inline-flex
+				align-items: center
+				margin-right: 8px
+				&:last-child
+					margin-right: 0
+
+				a
+					display: flex
+					align-items: center
+					text-decoration: none
+					color: var(--pretalx-clr-primary)
+					&:hover
+						text-decoration: underline
+
+					img
+						margin-right: 4px
+
+		.inline-answer
+			display: block
+			margin-bottom: 8px
+
+			.question
+				color: var(--pretalx-clr-text)
+				margin-right: 4px
+				strong
+					font-weight: 600
+
+			.answer
+				color: var(--pretalx-clr-text)
+
+				p
+					margin: 0
+					display: inline
+
+				.fa
+					margin-right: 4px
+
+				a
+					color: var(--pretalx-clr-primary)
+					text-decoration: none
+					&:hover
+						text-decoration: underline
+
 	.inner-card
 		display: flex
 		margin-bottom: 12px
@@ -284,6 +370,9 @@ export default {
 					border: 0
 					border-top: 1px solid #e0e0e0
 					margin: 8px 0
+
+				.icon-group
+					justify-content: center
 
 				.inline-answer
 					margin-top: 8px

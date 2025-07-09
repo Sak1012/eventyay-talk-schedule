@@ -116,6 +116,7 @@ export default {
 	provide () {
 		return {
 			eventUrl: this.eventUrl,
+			remoteApiUrl: computed(() => this.remoteApiUrl),
 			buntTeleportTarget: computed(() => this.$refs.teleportTarget),
 			onSessionLinkClick: (event, session) => {
 				if (this.onHomeServer) return
@@ -231,6 +232,11 @@ export default {
 				url = new URL('http://example.org/' + this.eventUrl)
 			}
 			return url.pathname.replace(/\//g, '')
+		},
+		remoteApiUrl () {
+			if (!this.eventUrl) return ''
+			const eventUrlObj = new URL(this.eventUrl)
+			return `${eventUrlObj.protocol}//${eventUrlObj.host}/api/events/${this.eventSlug}/`
 		}
 	},
 	async created () {
