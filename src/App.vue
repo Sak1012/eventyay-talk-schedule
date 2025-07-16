@@ -517,7 +517,7 @@ export default {
 					if (this.modalContent && this.modalContent.contentType === 'session' && this.modalContent.contentObject.id === session.id) {
 						this.modalContent.contentObject.isLoading = true;
 					}
-					talk.apiContent = await this.remoteApiRequest(`submissions/${session.id}/`, 'GET')
+					talk.apiContent = await this.remoteApiRequest(`submissions/${session.id}/?expand=answers.question`, 'GET')
 					// Update content with fetched description if we are still on the same session
 					if (this.modalContent && this.modalContent.contentType === 'session' && this.modalContent.contentObject.id === session.id) {
 						this.modalContent = {
